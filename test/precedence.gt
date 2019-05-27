@@ -1,0 +1,14 @@
+proc main ()
+    begin
+        x := -1+2; # Assign (Id "x") (Binary Add (Unary Minus (IntConst 1)) (IntConst 2))
+        y := -1-(-2); # Assign (Id "y") (Binary Sub (Unary Minus (IntConst 1)) (Unary Minus (IntConst 2)))]]
+        
+        eg1Spec := (-(x) - (y + 4)*z); #ans: -x - ((y + 4) * z)
+        eg2Spec := (-(x*y) - y + 4*z); #ans: (-(x * y) - y) + (4 * z)
+
+        a := 3 > 0.5 || !(2 = 1 && true);
+        # b := 3 = 2 = 1;
+        c := !(true||false);
+        d := !true && !(false || !true);
+        e := 1 > 2 && !x;
+    end

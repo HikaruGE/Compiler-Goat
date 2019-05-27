@@ -1,0 +1,10 @@
+proc main()
+    int x;
+begin
+    read x ;
+    if x 42 then
+        write 42;
+    else
+        write 0;
+end
+

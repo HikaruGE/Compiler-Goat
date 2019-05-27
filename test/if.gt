@@ -1,0 +1,20 @@
+proc main ()
+    begin
+        #if的嵌套
+        if x = 1 then y := true;
+            if x = 1 then y := true;
+                if x = 1 then y := true;
+                else z := false;
+                fi
+            fi
+
+            if x = 1 then y := true;
+            fi
+            else z := false;
+            if x = 1 then y := true;
+                if x = 1 then y := true;
+            
+                fi  
+            fi
+        fi
+    end

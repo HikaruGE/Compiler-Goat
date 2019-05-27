@@ -1,0 +1,21 @@
+proc bin_search(val int data_list, val int key)
+    int low;
+    int high;
+    int mid;
+
+    begin
+        low := 0;
+        call len(data_list);
+        while low <= high
+            do
+                mid := (low+high)/2;
+                if data_list[mid] = key then
+                    low := high + 1;
+                    if data_list[mid] > key then
+                        high := mid - 1;
+                    else    
+                        low := mid + 1;
+                    fi
+                fi
+            od
+    end

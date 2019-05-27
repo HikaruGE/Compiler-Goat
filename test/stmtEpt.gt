@@ -1,0 +1,5 @@
+proc main ()
+    bool s;
+    begin
+    s := 0;
+    end

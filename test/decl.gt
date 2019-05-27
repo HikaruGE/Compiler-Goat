@@ -1,0 +1,17 @@
+proc yyy (val bool x1, val float x2, ref int c)
+
+    bool x;
+    float y;
+    int z;
+
+    bool x[2];
+    float y[3];
+    int z[4];
+
+    bool x[4,5];
+    float y[8,6];
+    #int z[t,6];
+
+    begin
+        x := false;
+    end

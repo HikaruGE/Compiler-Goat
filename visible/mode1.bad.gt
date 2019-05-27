@@ -1,0 +1,17 @@
+proc main ()
+    bool test; 
+    int x;
+begin
+    call hib(42,x);
+end
+
+proc fib(val int n, ref int out)
+begin
+    out := n;
+end
+
+proc hib(val n, ref int out) 
+begin
+    out := n;
+end
+

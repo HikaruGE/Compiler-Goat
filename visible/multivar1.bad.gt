@@ -1,0 +1,13 @@
+# Multiple variables called "y"
+proc main()
+    int y;
+    int x;
+    int y;
+begin
+    call f(y);
+end
+
+proc f(val int y)
+    y := 2;
+end
+

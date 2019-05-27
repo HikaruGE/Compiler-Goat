@@ -1,0 +1,18 @@
+#The header has two components (in this order):
+#1. An identifier—the procedure’s name.
+#2. A (possibly empty) comma-separated list of formal parameters within 
+#    a pair of parentheses (so the parentheses are always present).
+#Each formal parameter has three components:
+#1. A parameter passing indicator (val or ref).
+#2. A type (bool, float or int).
+#3. An identifier.
+
+proc xxx ()
+    begin
+        x := false;
+    end
+
+proc yyy (val bool x1, val float x2, ref int c)
+    begin
+        x := false;
+    end

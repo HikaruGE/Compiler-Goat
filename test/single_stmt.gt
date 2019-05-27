@@ -1,0 +1,32 @@
+proc xxx ()
+    begin
+        x := false;
+        ar1[2] := 1;
+        ar2[4+ar1[0]] := 3;
+        
+        if 3>=5
+            then write "das";
+        fi
+    end
+
+proc xxx ()
+    begin
+        x := false;
+        ar1[2] := 1;
+        ar2[4+ar1[0]] := 3;
+        
+        if 3>=5
+            then write "das";
+        fi
+    end
+    proc xxx ()
+    begin
+        x := false;
+        ar1[2] := 1;
+        ar2[4+ar1[0]] := 3;
+        
+        if 3>=5
+            then write "das";
+        fi
+    end
+    

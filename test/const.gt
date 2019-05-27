@@ -1,0 +1,37 @@
+proc main ()
+    begin
+        #An int literal is a non-empty sequence of digits. 
+        int1 := 23;
+        int2 := -2412;
+        #int3 := 421r3;
+
+        #A float literal is a sequence of one or more digits, 
+        #followed by a decimal point, and another sequence of one or 
+        #more digits.
+        float1 := 3.4;
+        float2 := -32.4214;
+        float3 := 0.2414;
+
+        #A Boolean constant is false or true.
+        bool1 := true;
+        bool2 := True;
+        bool3 := false;
+        bool4 := False;
+
+        #A string constant is a sequence of characters between double quotes.
+        #The sequence itself cannot contain double quotes or 
+        #newline/tab characters. 
+        #However, it may contain “\n” to represent a newline character.
+        write "\n";
+        write 35;
+        write -3.5;
+        #write "s"ad";
+        #write "$%\tsa
+        #   ssd\n";
+        #write "$%		sa";
+        #write """;
+
+        read a[2];
+        read b[3,5];
+        read x[3+a[0]*5];
+    end
