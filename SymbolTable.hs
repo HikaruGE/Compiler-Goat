@@ -1,6 +1,8 @@
+module SymbolTable where
+
 import qualified Data.Map as Map
 import GoatAST
-import Analyze
+-- import Analyze
 
 type SymTable
   = (CallTable, ProcTable)
@@ -19,6 +21,7 @@ type VarTable
 -- (0, 0) represents singleton variable
 -- (a, 0) represents array, where a >= 1
 -- (a, b) represents matrix, where a, b >= 1
+type SlotNum = Int
 data VarInfo
   = VarInfo BaseType SlotNum Bool (Int, Int) Indic
 
@@ -34,17 +37,17 @@ getVarInfo id table
   = m
     where (Just m) = Map.lookup id table
 
--- calculate the size of the stack frame needed for a procedure
-getSize :: VarTable -> Int
-getSize t
-  = Map.fold sumSize 0 t
+-- -- calculate the size of the stack frame needed for a procedure
+-- getSize :: VarTable -> Int
+-- getSize t
+--   = Map.fold sumSize 0 t
 
-sumSize :: VarInfo -> Int -> Int
-sumSize (VarInfo _ _ False _ _) n
-  = n + 1
-sumSize (VarInfo _ _ True (0, 0) _) n
-  = n + 1
-sumSize (VarInfo _ _ True (a, 0) _) n
-  = n + a
-sumSize (VarInfo _ _ True (a, b) _) n
-  = n + a * b
+-- sumSize :: VarInfo -> Int -> Int
+-- sumSize (VarInfo _ _ False _ _) n
+--   = n + 1
+-- sumSize (VarInfo _ _ True (0, 0) _) n
+--   = n + 1
+-- sumSize (VarInfo _ _ True (a, 0) _) n
+--   = n + a
+-- sumSize (VarInfo _ _ True (a, b) _) n
+--   = n + a * b

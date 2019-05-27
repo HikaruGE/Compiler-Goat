@@ -3,39 +3,51 @@ module CodeGen where
 import GoatAST
 import SymbolTable
 -- import Analyze
-
 import qualified Data.Map as Map
 
 type Reg = Int
 
+type GenTable = (CallTable, VarTable)
+
 data BinOpClass 
     = Arithmetic | Comparision | Logic
 
+
 compile :: Program -> String
-compile ast = 
-    let t = initTables in
-        programCode ast t
+compile ast 
+    = 
+        let t = (Map.empty, Map.empty) in
+            programCode ast t
 
-programCode :: Program -> SynTables -> String
+programCode :: Program -> SymTable -> String
 programCode (Program m) t
-  = "    call proc_main\n" ++
-    "    halt\n" ++ 
-    (procsCode m t)
+    = 
+        "    call proc_main\n" ++
+        "    halt\n" ++ 
+        (procsCode m t)
 
-procsCode :: [Proc] -> SynTables -> String
-procsCode [] _
-    = ""
-procsCode (x:xs) t
-    = (procCode x t) ++ (procsCode xs t)
+procsCode :: [Proc] -> SymTable -> String
+procsCode procs st = concatMap (procCode st) procs
 
-procCode :: Proc -> SynTables -> String
-procCode (Proc id x y z) t
-    =   (procLabel id) ++
-        "    push_stack_frame 1\n" ++
-        "#decl\n" ++
-        (stmtsCode z t) ++
-        "    pop_stack_frame 1\n" ++
-        "    return\n"
+procCode :: SymTable -> Proc -> String
+procCode (callt, proct) (Proc id params decls stmts)
+    =   
+        let 
+            -- t = (callt, (getVarTable id proct))  -- Todo
+            t = (Map.empty, Map.empty)
+        in
+            (procLabel id) ++
+            "    push_stack_frame 1\n" ++
+            "#decl\n" ++
+            (stmtsCode stmts t) ++
+            "    pop_stack_frame 1\n" ++
+            "    return\n"
+
+-- procCode :: Proc -> VarTable -> String
+-- procCode (Proc id x y z) t
+--   = (procLabel id) ++ (prolog n) ++ (paramsCode x t 0) ++ (declsCode y t m) ++ (stmtsCode z t) ++ (epilog n)
+--     where n = getSize t
+--           m = length x
 
 prolog :: Int -> String
 prolog n = "    push_stack_frame " ++ (show n) ++ "\n"
@@ -44,13 +56,13 @@ epilog :: Int -> String
 epilog n = "    pop_stack_frame " ++ (show n) ++ 
            "\n    return\n"
           
-paramsCode :: [Param] -> SynTables -> Int -> String
+paramsCode :: [Param] -> GenTable -> Int -> String
 paramsCode [] _ _
     = ""
 paramsCode (x:xs) t n
     = (paramCode x t n) ++ (paramsCode xs t (n + 1))
 
-paramCode :: Param -> SynTables -> Int -> String
+paramCode :: Param -> GenTable -> Int -> String
 paramCode _ _ n
     = "    store " ++ s ++ ", r" ++ s ++ "\n"
     where s = show n
@@ -63,14 +75,11 @@ procLabel :: String -> String
 procLabel s
     = "proc_" ++ s ++ ":\n"
 
-stmtsCode :: [Stmt] -> SynTables -> String
-stmtsCode [] _
-    = ""
-stmtsCode (x:xs) t
-    = (stmtCode x t) ++ (stmtsCode xs t)
+stmtsCode :: [Stmt] -> GenTable -> String
+stmtsCode stmts gt = concatMap (stmtCode gt) stmts
 
-stmtCode :: Stmt -> SynTables -> String
-stmtCode (Write expr) t = 
+stmtCode :: GenTable -> Stmt -> String
+stmtCode gt (Write expr) = 
     let 
         (code, reg, ty) = exprCode expr 0
     in

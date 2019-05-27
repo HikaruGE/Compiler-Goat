@@ -14,7 +14,10 @@ test1 x =
     in
         y'
     
-       
+-- concatMap :: (a -> [b]) -> [a] -> [b]
+
+testConcatMap strLst str = concatMap (strAddColon str) strLst 
+strAddColon str1 str2 = "zijidecode"++str1
 
 add1 :: Int -> Int
 add1 x = x+1
