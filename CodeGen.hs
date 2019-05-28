@@ -37,10 +37,10 @@ procCode (callt, proct) (Proc id params decls stmts)
         let 
             t@(t1,t2,_,_) = (callt, (getVarTable id proct), id, 0)  -- Todo
         in
-            show(Map.lookup "x1" t2) ++"\n"++
-            show(Map.lookup "x2" t2) ++"\n"++
-            show(Map.lookup "x3" t2) ++"\n"++
-            "\n"++"\n"++
+            -- show(Map.lookup "x1" t2) ++"\n"++
+            -- show(Map.lookup "x2" t2) ++"\n"++
+            -- show(Map.lookup "x3" t2) ++"\n"++
+            -- "\n"++"\n"++
             (procLabel id) ++
             (prolog t) ++
             (declsCode decls t) ++
@@ -142,34 +142,88 @@ stmtsCode (x:xs) state =
 -- stmtsCode stmts gt = concatMap (stmtCode gt) stmts
 
 stmtCode :: Stmt -> LocalState -> (String, LocalState)
-stmtCode (Assign var expr2) state@(_, varTable, _, _) =
+stmtCode (Assign var rExpr) state@(_, varTable, _, _) =
     case var of
         (Id varid) -> 
             let
                 varInfo = lookupVarTable varid varTable
-                (code, r, ty) = exprCode expr2 0 state
+                (code, r, ty) = exprCode rExpr 0 state
             in
                 (code ++
-                "    store " ++ show((getSlotNum varInfo)) ++ " ," ++ regToStr(r) ++ "\n",
+                 (storeSingleVar varid varInfo r),
                     state)
 
-        (Array varid expr1) -> 
+        (Array varid lExpr) -> 
             let
                 r0 = 0
                 r1 = 1
                 varInfo = lookupVarTable varid varTable
-                (code1, r1', ty1) = exprCode expr1 r1 state
+                (code1, r1', ty1) = exprCode lExpr r1 state
                 code2 = "    load_address" ++ regToStr(r0) ++ "," ++ show(getSlotNum (varInfo)) ++ "\n"
                 code3 = "    sub_offset" ++ regToStr(r0) ++ "," ++ regToStr(r0) ++ "," ++ regToStr(r1') ++ "\n"
-                (code4, r1'', ty2) = exprCode expr2 r1 state
+                (code4, r1'', ty2) = exprCode rExpr r1 state
                 code5 = "    store_indirect" ++ regToStr(r0) ++ "," ++ regToStr(r1) ++ "\n"
             in
                 (concat([code1,code2,code3,code4,code5]),
                     state
                 )
                 
-        -- (Matrix varid expr1 expr2) -> 
+        (Matrix varid lExpr1 lExpr2) ->
+            let
+                varInfo = lookupVarTable varid varTable
+                (code1, r1, ty1) = exprCode lExpr1 2 state
+                (code2, r2, ty2) = exprCode lExpr2 4 state
+                (d1, d2) = getDim varInfo
+                (code0, _, rTy) = exprCode rExpr 0 state
+            in
+                (code0 ++
+                "    load_address" ++ regToStr(1) ++ "," ++ show(getSlotNum (varInfo)) ++ "\n" ++
+                code1 ++ code2 ++
+                "    int_const r3, " ++ show(d1) ++ "\n" ++
+                "    mul_int r2, r2, r3\n" ++
+                "    add_int r2, r2, r4\n" ++
+                "    sub_offset" ++ regToStr(1) ++ "," ++ regToStr(1) ++ "," ++ regToStr(2) ++ "\n" ++
+                "    store_indirect" ++ regToStr(1) ++ "," ++ regToStr(0) ++ "\n"
+                ,state)
 
+stmtCode (Read var) state@(_, varTable, _, _) =
+    case var of
+        (Id varid) -> 
+            let
+                varInfo = lookupVarTable varid varTable
+            in
+                ("    call_builtin read_" ++ readOzTy(getBaseType varInfo) ++ "\n" ++
+                 (storeSingleVar varid varInfo 0)
+                    ,state)
+        
+        (Array varid expr) -> 
+            let
+                varInfo = lookupVarTable varid varTable
+                (code, r, ty) = exprCode expr 2 state
+            in
+                ("    call_builtin read_" ++ readOzTy(getBaseType varInfo) ++ "\n" ++
+                 "    load_address" ++ regToStr(1) ++ "," ++ show(getSlotNum (varInfo)) ++ "\n" ++
+                 code ++
+                 "    sub_offset" ++ regToStr(1) ++ "," ++ regToStr(1) ++ "," ++ regToStr(r) ++ "\n" ++
+                 "    store_indirect" ++ regToStr(1) ++ "," ++ regToStr(0) ++ "\n"
+                    ,state)
+
+        (Matrix varid expr1 expr2) ->
+            let
+                varInfo = lookupVarTable varid varTable
+                (code1, r1, ty1) = exprCode expr1 2 state
+                (code2, r2, ty2) = exprCode expr2 4 state
+                (d1, d2) = getDim varInfo
+            in
+                ("    call_builtin read_" ++ readOzTy(getBaseType varInfo) ++ "\n" ++
+                 "    load_address" ++ regToStr(1) ++ "," ++ show(getSlotNum (varInfo)) ++ "\n" ++
+                 code1 ++ code2 ++
+                 "    int_const r3, " ++ show(d1) ++ "\n" ++
+                 "    mul_int r2, r2, r3\n" ++
+                 "    add_int r2, r2, r4\n" ++
+                 "    sub_offset" ++ regToStr(1) ++ "," ++ regToStr(1) ++ "," ++ regToStr(2) ++ "\n" ++
+                 "    store_indirect" ++ regToStr(1) ++ "," ++ regToStr(0) ++ "\n"
+                    ,state)
 
 stmtCode (Write expr) state = 
     let 
@@ -179,7 +233,11 @@ stmtCode (Write expr) state =
         "    call_builtin " ++ (writeBuiltin ty) ++ "\n",
         state)
 
--- assignCode :: Var -> LocalState
+        
+
+storeSingleVar :: Ident -> VarInfo -> Reg -> String
+storeSingleVar varid varInfo r =
+    "    store " ++ show(getSlotNum (varInfo)) ++ "," ++ regToStr(0) ++ "\n" 
 
 exprCode :: Expr -> Reg -> LocalState -> (String, Reg, BaseType)
 exprCode (BoolConst b) r _ = 
@@ -222,7 +280,24 @@ exprCode (Var var) r state@(_, varTable, _, _) =
                     r,
                     (getBaseType varInfo)
                 )
-        -- (Matrix varid expr1 expr2) -> 
+        (Matrix varid expr1 expr2) -> 
+            let
+                varInfo = lookupVarTable varid varTable
+                (code1, r1, ty1) = exprCode expr1 (r+2) state
+                (code2, r2, ty2) = exprCode expr2 (r+4) state
+                (d1, d2) = getDim varInfo
+            in
+                (
+                 ("    load_address" ++ regToStr(r+1) ++ "," ++ show(getSlotNum (varInfo)) ++ "\n" ++
+                 code1 ++ code2 ++
+                 "    int_const " ++ regToStr(r+3) ++ ", " ++ show(d1) ++ "\n" ++
+                 "    mul_int " ++ regToStr(r+2) ++ ", " ++ regToStr(r+2) ++ ", " ++ regToStr(r+3) ++ "\n" ++
+                 "    add_int " ++ regToStr(r+2) ++ ", " ++ regToStr(r+2) ++ ", " ++ regToStr(r+4) ++ "\n" ++
+                 "    sub_offset" ++ regToStr(r+1) ++ "," ++ regToStr(r+1) ++ "," ++ regToStr(r+2) ++ "\n" ++
+                 "    load_indirect" ++ regToStr(r) ++ "," ++ regToStr(r+1) ++ "\n"),
+                 r,
+                 (getBaseType varInfo)
+                )
 
 exprCode (Unary unaOp expr) r state = 
     let
@@ -306,6 +381,11 @@ ozTy :: BaseType -> String
 ozTy IntType = "int"
 ozTy FloatType = "real"
 ozTy BoolType = "int"
+
+readOzTy :: BaseType -> String
+readOzTy IntType = "int"
+readOzTy FloatType = "real"
+readOzTy BoolType = "bool"
 
 boolToInt :: Bool -> Int
 boolToInt True = 1 
