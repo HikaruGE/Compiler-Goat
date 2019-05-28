@@ -109,7 +109,7 @@ exprCode (Unary unaOp expr) r =
         code' = 
             case unaOp of
                 Neg -> "    not" ++ regToStr(reg) ++ "," ++ regToStr(reg) ++ "\n"
-                Minus -> "    neg_" ++ (minusCodeByTy ty) ++ regToStr(reg) ++ "," ++ regToStr(reg) ++ "\n"
+                Minus -> "    neg_" ++ (ozTy ty) ++ regToStr(reg) ++ "," ++ regToStr(reg) ++ "\n"
     in
         (code++code', reg, ty)
 
@@ -117,14 +117,74 @@ exprCode (Binary binOp lexpr rexpr) r =
     let
         left@(lcode, lreg, lty) = exprCode lexpr r
         right@(rcode, rreg, rty) = exprCode rexpr (r+1)
-        convertCode = tyConvert binOp left right
-        code' = "\n"
+        (isConvert, convertCode, commonTy) = tyConvert left right
+        (code', afterType) = binOpCode binOp lreg rreg commonTy
     in
-        (lcode ++ rcode ++ code', lreg, lty)
+        (lcode ++ rcode ++ convertCode ++ code', lreg, afterType)
 
-minusCodeByTy :: BaseType -> String
-minusCodeByTy IntType = "int"
-minusCodeByTy FloatType = "real"
+binOpCode :: BinOp -> Reg -> Reg -> BaseType -> (String, BaseType)
+binOpCode binOp reg1 reg2 commonTy =
+    case (classifyBinOp binOp) of
+        Arithmetic -> 
+            case binOp of 
+                Add -> (concat(["    add_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        commonTy)
+                Sub -> (concat(["    sub_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        commonTy)
+                Mul -> (concat(["    mul_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        commonTy)
+                Div -> (concat(["    div_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        commonTy)
+        Comparision -> 
+            case binOp of
+                Eq -> (concat(["    cmp_eq_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        BoolType)
+                NotEq -> (concat(["    cmp_ne_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        BoolType)
+                Lt -> (concat(["    cmp_lt_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        BoolType)
+                LtEq -> (concat(["    cmp_le_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        BoolType)
+                Gt -> (concat(["    cmp_gt_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        BoolType)
+                GtEq -> (concat(["    cmp_ge_", (ozTy commonTy),regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        BoolType)
+        Logic ->
+            case binOp of
+                And -> (concat(["    and",regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        BoolType)
+                Or -> (concat(["    or",regToStr(reg1),",",regToStr(reg1),",",regToStr(reg2),"\n"]),
+                        BoolType)
+
+tyConvert :: (String, Reg, BaseType) -> (String, Reg, BaseType) -> (Bool, String, BaseType)
+tyConvert (_,reg1,ty1) (_,reg2,ty2) =
+    if (isBothBoolType ty1 ty2) then
+        (False, "", BoolType)
+    else
+        if (isBothSameType ty1 ty2) then
+            (False, "", ty1)
+        else
+            let 
+                reg = convertReg (reg1,ty1) (reg2,ty2) 
+            in
+                (True , "    int_to_real" ++ regToStr(reg) ++ "," ++ regToStr(reg) ++ "\n", FloatType)
+
+isBothBoolType :: BaseType -> BaseType -> Bool
+isBothBoolType BoolType BoolType = True
+isBothBoolType _ _ = False
+
+isBothSameType :: BaseType -> BaseType -> Bool
+isBothSameType ty1 ty2 = ty1 == ty2 
+
+convertReg :: (Reg, BaseType) -> (Reg, BaseType) -> Reg
+-- convertReg (reg1,ty1) (reg2,ty2) = 1
+convertReg (reg1,IntType) (reg2,FloatType) = reg1
+convertReg (reg1,FloatType) (reg2,IntType) = reg2
+
+ozTy :: BaseType -> String
+ozTy IntType = "int"
+ozTy FloatType = "real"
+ozTy BoolType = "int"
 
 boolToInt :: Bool -> Int
 boolToInt True = 1 
@@ -146,38 +206,6 @@ writeBuiltin ty = case ty of
 regToStr :: Int -> String
 regToStr i = " r" ++ show(i)
 
--- isRegNeedInc :: Expr -> Expr -> (Bool, Expr, Expr)
--- isRegNeedInc expr expr =
-
--- isBinExpr :: Expr -> Bool
--- isBinExpr (Binary _ _ _) = True
--- isBinExpr _ = False
-
-tyConvert :: BinOp -> (String, Reg, BaseType) -> (String, Reg, BaseType) -> String
-tyConvert binOp (_,reg1,ty1) (_,reg2,ty2) =
-    case (classifyBinOp binOp) of
-        Arithmetic -> 
-            if ty1 == ty2 then
-                ""
-            else
-                let 
-                    reg = convertReg (reg1,ty1) (reg2,ty2) 
-                in
-                    "    int_to_real" ++ regToStr(reg) ++ "," ++ regToStr(reg) ++ "\n"
-
-        Comparision -> 
-            ""
-        Logic ->
-            "" 
-
-convertReg :: (Reg, BaseType) -> (Reg, BaseType) -> Reg
-convertReg (reg1,ty1) (reg2,ty2) = 1
--- convertReg (reg1,ty1) (reg2,ty2) =
---     if ty1 == IntType 
---         then reg1
---         else if ty2 == IntType 
---             then reg2
-
 classifyBinOp :: BinOp -> BinOpClass
 classifyBinOp binOp = 
     case binOp of
@@ -185,7 +213,7 @@ classifyBinOp binOp =
         Sub -> Arithmetic
         Mul -> Arithmetic
         Div -> Arithmetic
-        Eq -> Arithmetic
+        Eq -> Comparision
         NotEq -> Comparision
         Lt -> Comparision
         LtEq -> Comparision
