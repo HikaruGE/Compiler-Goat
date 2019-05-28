@@ -42,11 +42,10 @@ procCode (callt, proct) (Proc id params decls stmts)
             show(Map.lookup "x3" t2) ++"\n"++
             "\n"++"\n"++
             (procLabel id) ++
-            "    push_stack_frame 1\n" ++
+            (prolog t) ++
             (declsCode decls t) ++
             (stmtsCode stmts t) ++
-            "    pop_stack_frame 1\n" ++
-            "    return\n"
+            (epilog t)
 
 declsCode :: [Decl] -> LocalState -> String
 declsCode decls state = concatMap (declCode state) decls
@@ -101,12 +100,11 @@ arrayDeclCode slot len = (defaultStoreCode slot) ++ (arrayDeclCode (slot+1) (len
 
 
 
--- prolog :: Int -> String
--- prolog n = "    push_stack_frame " ++ (show n) ++ "\n"
+prolog :: LocalState -> String
+prolog (_, vt, _, _) = "    push_stack_frame " ++ (show (getSize vt)) ++ "\n"
 
--- epilog :: Int -> String
--- epilog n = "    pop_stack_frame " ++ (show n) ++ 
---            "\n    return\n"
+epilog :: LocalState -> String
+epilog (_, vt, _, _) = "    pop_stack_frame " ++ (show (getSize vt)) ++ "\n    return\n"
           
 -- paramsCode :: [Param] -> LocalState -> Int -> String
 -- paramsCode [] _ _
@@ -144,6 +142,35 @@ stmtsCode (x:xs) state =
 -- stmtsCode stmts gt = concatMap (stmtCode gt) stmts
 
 stmtCode :: Stmt -> LocalState -> (String, LocalState)
+stmtCode (Assign var expr2) state@(_, varTable, _, _) =
+    case var of
+        (Id varid) -> 
+            let
+                varInfo = lookupVarTable varid varTable
+                (code, r, ty) = exprCode expr2 0 state
+            in
+                (code ++
+                "    store " ++ show((getSlotNum varInfo)) ++ " ," ++ regToStr(r) ++ "\n",
+                    state)
+
+        (Array varid expr1) -> 
+            let
+                r0 = 0
+                r1 = 1
+                varInfo = lookupVarTable varid varTable
+                (code1, r1', ty1) = exprCode expr1 r1 state
+                code2 = "    load_address" ++ regToStr(r0) ++ "," ++ show(getSlotNum (varInfo)) ++ "\n"
+                code3 = "    sub_offset" ++ regToStr(r0) ++ "," ++ regToStr(r0) ++ "," ++ regToStr(r1') ++ "\n"
+                (code4, r1'', ty2) = exprCode expr2 r1 state
+                code5 = "    store_indirect" ++ regToStr(r0) ++ "," ++ regToStr(r1) ++ "\n"
+            in
+                (concat([code1,code2,code3,code4,code5]),
+                    state
+                )
+                
+        -- (Matrix varid expr1 expr2) -> 
+
+
 stmtCode (Write expr) state = 
     let 
         (code, reg, ty) = exprCode expr 0 state
@@ -186,10 +213,10 @@ exprCode (Var var) r state@(_, varTable, _, _) =
         (Array varid expr) -> 
             let
                 varInfo = lookupVarTable varid varTable
-                (code1, r, ty) = exprCode expr r state
-                code2 = "    load_address" ++ regToStr(r+1) ++ "," ++ show(getSlotNum (varInfo)) ++ "\n"
-                code3 = "    sub_offset" ++ regToStr(r) ++ "," ++ regToStr(r+1) ++ "," ++ regToStr(r) ++ "\n"
-                code4 = "    load_indirect" ++ regToStr(r) ++ "," ++ regToStr(r) ++ "\n"
+                (code1, r1, ty) = exprCode expr r state
+                code2 = "    load_address" ++ regToStr(r1+1) ++ "," ++ show(getSlotNum (varInfo)) ++ "\n"
+                code3 = "    sub_offset" ++ regToStr(r1) ++ "," ++ regToStr(r1+1) ++ "," ++ regToStr(r) ++ "\n"
+                code4 = "    load_indirect" ++ regToStr(r1) ++ "," ++ regToStr(r1) ++ "\n"
             in
                 (concat([code1,code2,code3,code4]),
                     r,

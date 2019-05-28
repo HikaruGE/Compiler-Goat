@@ -46,20 +46,20 @@ getVarInfo id table
     = m
     where (Just m) = Map.lookup id table
 
--- -- calculate the size of the stack frame needed for a procedure
--- getSize :: VarTable -> Int
--- getSize t
---   = Map.fold sumSize 0 t
+-- calculate the size of the stack frame needed for a procedure
+getSize :: VarTable -> Int
+getSize t
+  = Map.foldr sumSize 0 t
 
--- sumSize :: VarInfo -> Int -> Int
--- sumSize (VarInfo _ _ False _ _) n
---   = n + 1
--- sumSize (VarInfo _ _ True (0, 0) _) n
---   = n + 1
--- sumSize (VarInfo _ _ True (a, 0) _) n
---   = n + a
--- sumSize (VarInfo _ _ True (a, b) _) n
---   = n + a * b
+sumSize :: VarInfo -> Int -> Int
+sumSize (VarInfo _ _ False _ _) n
+  = n + 1
+sumSize (VarInfo _ _ True (0, 0) _) n
+  = n + 1
+sumSize (VarInfo _ _ True (a, 0) _) n
+  = n + a
+sumSize (VarInfo _ _ True (a, b) _) n
+  = n + a * b
 
 initSymTable :: Program -> SymTable
 initSymTable program =

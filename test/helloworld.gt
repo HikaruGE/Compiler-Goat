@@ -1,19 +1,11 @@
 proc main()
-bool x1;
-float x2;
-bool x3[4,5];
+    bool x1;
+    float x2;
+    bool x3[4];
 begin
-
-write ((1+2) > 3*4) < (true > false);write "\n";
-
-end
-
-proc omg(val bool x1, val float x2, ref int c)
-bool x1;
-float x2;
-bool x3[4,5];
-begin
-
-write ((1+2) > 3*4) < (true > false);write "\n";
+    x1 := true;
+    write x1;write "\n";
+    write x2;write "\n";
+    write x3[2];write "\n";
 
 end
