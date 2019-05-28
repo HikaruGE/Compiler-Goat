@@ -1,17 +1,15 @@
 proc main()
 
-    float x4[5,7];
+    int x;
+    int count;
 
 begin
 
-    x4[0,0] := 2.0;
-    x4[1,1] := 2.5;
-    x4[3,2] := 12.5;
-    x4[4,6] := -2.5;
-
-    write x4[0,0]; write "\n";
-    write x4[1,1]; write "\n";
-    write x4[3,2]; write "\n";
-    write x4[4,6]; write "\n";
+    count := 0;
+       read x;
+       while x > 0 do
+        count := count + 1;
+        read x; 
+    od
 
 end

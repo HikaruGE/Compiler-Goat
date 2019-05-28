@@ -9,6 +9,8 @@ type Reg = Int
 type LabelNum = Int
 
 type LocalState = (CallTable, VarTable, Ident, LabelNum)
+incLabel :: LocalState -> LocalState
+incLabel (ct, vt, id, l) = (ct, vt, id, (l+1))
 
 data BinOpClass 
     = Arithmetic | Comparision | Logic
@@ -44,7 +46,7 @@ procCode (callt, proct) (Proc id params decls stmts)
             (procLabel id) ++
             (prolog t) ++
             (declsCode decls t) ++
-            (stmtsCode stmts t) ++
+            fst(stmtsCode stmts t) ++
             (epilog t)
 
 declsCode :: [Decl] -> LocalState -> String
@@ -117,24 +119,25 @@ epilog (_, vt, _, _) = "    pop_stack_frame " ++ (show (getSize vt)) ++ "\n    r
 --     = "    store " ++ s ++ ", r" ++ s ++ "\n"
 --     where s = show n
 
--- blockLabel :: String -> String
--- blockLabel s
---     = "label_" ++ s ++ ":\n"
+blockLabel :: Ident -> String -> String
+blockLabel id s
+    = id ++ "_label_" ++ s ++ ":\n"
 
 procLabel :: String -> String
 procLabel s
     = "proc_" ++ s ++ ":\n"
 
 -- Code generator for a list of statements
-stmtsCode :: [Stmt] -> LocalState -> String
-stmtsCode [] _ 
-    = ""
+stmtsCode :: [Stmt] -> LocalState -> (String, LocalState)
+stmtsCode [] state 
+    = ("",state)
 stmtsCode (x:xs) state = 
     let
         (code, newstate) = stmtCode x state
-        code' = stmtsCode xs newstate
+        (code',newstate1) = stmtsCode xs newstate
     in
-        code ++ code'
+        (code ++ code',
+        newstate1)
 
 
 
@@ -233,7 +236,58 @@ stmtCode (Write expr) state =
         "    call_builtin " ++ (writeBuiltin ty) ++ "\n",
         state)
 
+stmtCode (If expr stmts) state@(_,_,id,l) = 
+    let
+        (code, _, _) = exprCode expr 0 state
+        newState1@(_,_,_,l1) = incLabel state
+        (innerStmtsCode,newState2) = stmtsCode stmts newState1
+
+    in
+        (code ++ 
+        "    branch_on_true r0, " ++ id ++ "_label_" ++ (show l) ++ "\n" ++ 
+        "    branch_uncond "++ id ++"_label_" ++ show(l1) ++ "\n" ++
+        id ++ "_label_" ++ (show l) ++ ":\n" ++
+            innerStmtsCode ++ 
+        (blockLabel id (show l1)),
+            newState2
+        )
+
+stmtCode (IfElse expr stmts1 stmts2) state@(_,_,id,l) =
+    let
+        (code, _, _) = exprCode expr 0 state
+        newState@(_,_,_,l1) = incLabel state
+        (innerStmtsCode1,newState1) = stmtsCode stmts1 newState
+        (innerStmtsCode2,newState2) = stmtsCode stmts1 newState1
+    in
+        (code++
+        "    branch_on_false r0, " ++ id ++ "_label_" ++ (show l) ++ "\n" ++ 
+            innerStmtsCode1 ++ 
+        "    branch_uncond "++ id ++"_label_" ++ show(l1) ++ "\n" ++
+        (blockLabel id (show l)) ++
+            innerStmtsCode2 ++
+        (blockLabel id (show l1))
+        ,
+        newState2
+        )
+
+stmtCode (While expr stmts) state@(_,_,id,l) =
+    let
+        (code, _, _) = exprCode expr 0 state
+        (innerStmtsCode, newState1) = stmtsCode stmts state
+        newState2@(_,_,_,l1) = incLabel newState1
+        newState3@(_,_,_,l2) = incLabel newState2
         
+    in
+        ((blockLabel id (show l)) ++ 
+            code ++
+        "    branch_on_true r0, " ++ id ++ "_label_" ++ show(l1) ++ "\n" ++ 
+        "    branch_uncond " ++ id ++ "_label_" ++ show(l2) ++ "\n" ++ 
+        (blockLabel id (show l1)) ++
+            innerStmtsCode ++
+        "    branch_uncond " ++ id ++ "_label_" ++ show(l) ++ "\n" ++ 
+        (blockLabel id (show l2)),
+        newState1
+        )
 
 storeSingleVar :: Ident -> VarInfo -> Reg -> String
 storeSingleVar varid varInfo r =
