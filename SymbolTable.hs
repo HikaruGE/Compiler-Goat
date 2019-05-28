@@ -23,8 +23,17 @@ type VarTable
 -- (a, b) represents matrix, where a, b >= 1
 type SlotNum = Int
 data VarInfo
-    = VarInfo BaseType SlotNum Bool (Int, Int) (Maybe Indic)
+    = VarInfo BaseType SlotNum Bool (Int, Int) Indic
         deriving(Show)
+getBaseType :: VarInfo -> BaseType
+getBaseType (VarInfo ty _ _ _ _) = ty
+getSlotNum :: VarInfo -> SlotNum
+getSlotNum (VarInfo _ slot _ _ _) = slot
+getDim :: VarInfo -> (Int, Int)
+getDim (VarInfo _ _ _ (a,b) _) = (a,b)
+getIndic :: VarInfo -> Indic
+getIndic (VarInfo _ _ _ _ indic) = indic
+
 -- look up a procedure name that is guaranteed to be present, from the global symbol table
 getVarTable :: Ident -> ProcTable -> VarTable
 getVarTable id table
@@ -105,6 +114,10 @@ insertVarTable :: VarTable -> (Ident, VarInfo) -> VarTable
 insertVarTable table (id, varInfo) =
         Map.insert id varInfo table
 
+lookupVarTable :: Ident -> VarTable -> VarInfo
+lookupVarTable varid vt = v
+    where (Just v) = Map.lookup varid vt
+
 genVarInfos :: [Param] -> [Decl] -> Int -> [(Ident, VarInfo)]
 genVarInfos [] [] _ = []
 genVarInfos (p@(Param _ _ id):ps) decls n = 
@@ -121,15 +134,15 @@ genVarInfos [] (d:ds) n =
 
 genVarInfoFromParam :: Param -> SlotNum -> VarInfo
 genVarInfoFromParam (Param indic baseType ident) slotNum =
-    VarInfo baseType slotNum False (0,0) (Just indic)
+    VarInfo baseType slotNum False (0,0) indic
 
 getVarInfoFromDecl :: Decl -> SlotNum -> VarInfo
 getVarInfoFromDecl (DeclVar baseType ident) slotNum =
-    VarInfo baseType slotNum True (0,0) Nothing
+    VarInfo baseType slotNum True (0,0) Loc
 getVarInfoFromDecl (DeclArray baseType ident a) slotNum =
-    VarInfo baseType slotNum True (a,0) Nothing
+    VarInfo baseType slotNum True (a,0) Loc
 getVarInfoFromDecl (DeclMatrix baseType ident a b) slotNum =
-    VarInfo baseType slotNum True (a,b) Nothing
+    VarInfo baseType slotNum True (a,b) Loc
 
 getIdentFromProc :: Proc -> Ident
 getIdentFromProc (Proc id _ _ _) = id

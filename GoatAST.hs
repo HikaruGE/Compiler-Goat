@@ -67,7 +67,7 @@ data UnaOp
 
 -- Data type for a parameter passing indicator.
 data Indic
-  = Val | Ref 
+  = Val | Ref | Loc
     deriving (Show, Eq)
 
 -- Data type for a base type.

@@ -43,10 +43,55 @@ procCode (callt, proct) (Proc id params decls stmts)
             "\n"++"\n"++
             (procLabel id) ++
             "    push_stack_frame 1\n" ++
-            "#decl\n" ++
+            (declsCode decls t) ++
             (stmtsCode stmts t) ++
             "    pop_stack_frame 1\n" ++
             "    return\n"
+
+declsCode :: [Decl] -> LocalState -> String
+declsCode decls state = concatMap (declCode state) decls
+
+declCode :: LocalState -> Decl -> String
+declCode (_, vt, _, _) decl =
+    case decl of
+        DeclVar ty varid ->
+            let
+                initDecl = defaultValueCode ty
+                slotNum = getSlotNum(lookupVarTable varid vt)
+                store = defaultStoreCode slotNum
+            in
+                initDecl ++ store
+
+        DeclArray ty varid lenth ->
+            let
+                initDecl = defaultValueCode ty
+                slotNum = getSlotNum(lookupVarTable varid vt)
+                store = arrayDeclCode slotNum lenth
+            in
+                initDecl ++ store
+        
+        DeclMatrix ty varid len1 len2 ->
+            let
+                initDecl = defaultValueCode ty
+                slotNum = getSlotNum(lookupVarTable varid vt)
+                store = arrayDeclCode slotNum (len1*len2)
+            in
+                initDecl ++ store
+
+defaultValueCode :: BaseType -> String
+defaultValueCode BoolType = "    int_const r0, 0\n"
+defaultValueCode IntType = "    int_const r0, 0\n"
+defaultValueCode FloatType = "    real_const r0, 0.0\n"
+
+defaultStoreCode :: SlotNum -> String
+defaultStoreCode slotNum = "    store " ++ show(slotNum) ++ ", r0\n"
+
+arrayDeclCode :: Int -> Int -> String -- start slot, length
+arrayDeclCode slot 0 = ""
+arrayDeclCode slot len = (defaultStoreCode slot) ++ (arrayDeclCode (slot+1) (len-1))
+
+-- stmtsCode :: [Stmt] -> LocalState -> String
+-- stmtsCode stmts gt = concatMap (stmtCode gt) stmts
 
 -- procCode :: Proc -> VarTable -> String
 -- procCode (Proc id x y z) t
@@ -54,64 +99,107 @@ procCode (callt, proct) (Proc id params decls stmts)
 --     where n = getSize t
 --           m = length x
 
-prolog :: Int -> String
-prolog n = "    push_stack_frame " ++ (show n) ++ "\n"
 
-epilog :: Int -> String
-epilog n = "    pop_stack_frame " ++ (show n) ++ 
-           "\n    return\n"
+
+-- prolog :: Int -> String
+-- prolog n = "    push_stack_frame " ++ (show n) ++ "\n"
+
+-- epilog :: Int -> String
+-- epilog n = "    pop_stack_frame " ++ (show n) ++ 
+--            "\n    return\n"
           
-paramsCode :: [Param] -> LocalState -> Int -> String
-paramsCode [] _ _
-    = ""
-paramsCode (x:xs) t n
-    = (paramCode x t n) ++ (paramsCode xs t (n + 1))
+-- paramsCode :: [Param] -> LocalState -> Int -> String
+-- paramsCode [] _ _
+--     = ""
+-- paramsCode (x:xs) t n
+--     = (paramCode x t n) ++ (paramsCode xs t (n + 1))
 
-paramCode :: Param -> LocalState -> Int -> String
-paramCode _ _ n
-    = "    store " ++ s ++ ", r" ++ s ++ "\n"
-    where s = show n
+-- paramCode :: Param -> LocalState -> Int -> String
+-- paramCode _ _ n
+--     = "    store " ++ s ++ ", r" ++ s ++ "\n"
+--     where s = show n
 
-blockLabel :: String -> String
-blockLabel s
-    = "label_" ++ s ++ ":\n"
+-- blockLabel :: String -> String
+-- blockLabel s
+--     = "label_" ++ s ++ ":\n"
 
 procLabel :: String -> String
 procLabel s
     = "proc_" ++ s ++ ":\n"
 
+-- Code generator for a list of statements
 stmtsCode :: [Stmt] -> LocalState -> String
-stmtsCode stmts gt = concatMap (stmtCode gt) stmts
-
-stmtCode :: LocalState -> Stmt -> String
-stmtCode gt (Write expr) = 
-    let 
-        (code, reg, ty) = exprCode expr 0
-    in
-        code ++ 
-        "    call_builtin " ++ (writeBuiltin ty) ++ "\n"
-
-
-
-exprCode :: Expr -> Reg -> (String, Reg, BaseType)
-exprCode (BoolConst b) r = ("    int_const" ++ regToStr(r) ++ ", "++ show(val) ++"\n",
-                                r,
-                                BoolType)
-                            where 
-                                val = boolToInt b
-exprCode (IntConst i) r = ("    int_const" ++ regToStr(r) ++ ", "++ show(i) ++"\n",
-                                r,
-                                IntType)
-exprCode (FloatConst f) r = ("    real_const" ++ regToStr(r) ++ ", "++ show(f) ++"\n",
-                                r,
-                                FloatType)
-exprCode (StrConst s) r = ("    string_const" ++ regToStr(r) ++ ", \""++ s ++"\"\n",
-                                r,
-                                StrType)
-
-exprCode (Unary unaOp expr) r = 
+stmtsCode [] _ 
+    = ""
+stmtsCode (x:xs) state = 
     let
-        (code, reg, ty) = exprCode expr r
+        (code, newstate) = stmtCode x state
+        code' = stmtsCode xs newstate
+    in
+        code ++ code'
+
+
+
+-- stmtsCode :: [Stmt] -> LocalState -> String
+-- stmtsCode stmts gt = concatMap (stmtCode gt) stmts
+
+stmtCode :: Stmt -> LocalState -> (String, LocalState)
+stmtCode (Write expr) state = 
+    let 
+        (code, reg, ty) = exprCode expr 0 state
+    in
+        (code ++ 
+        "    call_builtin " ++ (writeBuiltin ty) ++ "\n",
+        state)
+
+-- assignCode :: Var -> LocalState
+
+exprCode :: Expr -> Reg -> LocalState -> (String, Reg, BaseType)
+exprCode (BoolConst b) r _ = 
+    ("    int_const" ++ regToStr(r) ++ ", "++ show(val) ++"\n",
+        r,
+        BoolType)
+    where 
+        val = boolToInt b
+exprCode (IntConst i) r _ = 
+    ("    int_const" ++ regToStr(r) ++ ", "++ show(i) ++"\n",
+        r,
+        IntType)
+exprCode (FloatConst f) r _ = 
+    ("    real_const" ++ regToStr(r) ++ ", "++ show(f) ++"\n",
+        r,
+        FloatType)
+exprCode (StrConst s) r _ = 
+    ("    string_const" ++ regToStr(r) ++ ", \""++ s ++"\"\n",
+        r,
+        StrType)
+
+exprCode (Var var) r state@(_, varTable, _, _) =
+    case var of
+        (Id varid) -> 
+            let
+                varInfo = lookupVarTable varid varTable
+            in
+                ("    load" ++ regToStr(r) ++ ", " ++ show((getSlotNum varInfo)) ++ "\n",
+                    r,
+                    (getBaseType varInfo))
+        (Array varid expr) -> 
+            let
+                varInfo = lookupVarTable varid varTable
+                (code1, r, ty) = exprCode expr r state
+                code2 = "    load_address" ++ regToStr(r+1) ++ "," ++ show(getSlotNum (varInfo)) ++ "\n"
+                code3 = "    sub_offset" ++ regToStr(r) ++ "," ++ regToStr(r+1) ++ "," ++ regToStr(r) ++ "\n"
+                code4 = "    load_indirect" ++ regToStr(r) ++ "," ++ regToStr(r) ++ "\n"
+            in
+                (concat([code1,code2,code3,code4]),
+                    r,
+                    (getBaseType varInfo)
+                )
+        -- (Matrix varid expr1 expr2) -> 
+
+exprCode (Unary unaOp expr) r state = 
+    let
+        (code, reg, ty) = exprCode expr r state
         code' = 
             case unaOp of
                 Neg -> "    not" ++ regToStr(reg) ++ "," ++ regToStr(reg) ++ "\n"
@@ -119,10 +207,10 @@ exprCode (Unary unaOp expr) r =
     in
         (code++code', reg, ty)
 
-exprCode (Binary binOp lexpr rexpr) r =
+exprCode (Binary binOp lexpr rexpr) r state =
     let
-        left@(lcode, lreg, lty) = exprCode lexpr r
-        right@(rcode, rreg, rty) = exprCode rexpr (r+1)
+        left@(lcode, lreg, lty) = exprCode lexpr r state
+        right@(rcode, rreg, rty) = exprCode rexpr (r+1) state
         (isConvert, convertCode, commonTy) = tyConvert left right
         (code', afterType) = binOpCode binOp lreg rreg commonTy
     in
