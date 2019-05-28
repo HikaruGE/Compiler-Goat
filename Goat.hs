@@ -319,7 +319,7 @@ main
             input <- readFile filename
             let output = runParser pMain 0 "" input
             case output of
-              Right ast -> putStr (programCode ast (genSymTable ast))
+              Right ast -> putStr (programCode ast (initSymTable ast))
             --   Right ast -> do
             --                     (callt, proct) <- genSymTable ast
             --                     print(callt)

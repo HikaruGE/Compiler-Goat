@@ -3,6 +3,11 @@ module MyTest where
 import GoatAST
 import qualified Data.Map as Map
 
+data VarInfo
+    = VarInfo BaseType (Maybe Indic)
+        deriving(Show)
+
+
 isBinExpr :: Expr -> Bool
 isBinExpr (Binary _ _ _) = True
 isBinExpr _ = False

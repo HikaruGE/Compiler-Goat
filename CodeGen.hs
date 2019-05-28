@@ -6,23 +6,24 @@ import SymbolTable
 import qualified Data.Map as Map
 
 type Reg = Int
+type LabelNum = Int
 
-type GenTable = (CallTable, VarTable)
+type LocalState = (CallTable, VarTable, Ident, LabelNum)
 
 data BinOpClass 
     = Arithmetic | Comparision | Logic
 
 
-compile :: Program -> String
-compile ast 
-    = 
-        let t = (Map.empty, Map.empty) in
-            programCode ast t
+-- compile :: Program -> String
+-- compile ast 
+--     = 
+--         let t = (Map.empty, Map.empty) in
+--             programCode ast t
 
 programCode :: Program -> SymTable -> String
 programCode (Program m) t@(c,p)
     =   show(Map.lookup "main" c) ++"\n"++
-    show(Map.lookup "omg" c) ++"\n"++
+        show(Map.lookup "omg" c) ++"\n"++
         "    call proc_main\n" ++
         "    halt\n" ++ 
         (procsCode m t)
@@ -34,9 +35,12 @@ procCode :: SymTable -> Proc -> String
 procCode (callt, proct) (Proc id params decls stmts)
     =   
         let 
-            -- t = (callt, (getVarTable id proct))  -- Todo
-            t = (Map.empty, Map.empty)
+            t@(t1,t2,_,_) = (callt, (getVarTable id proct), id, 0)  -- Todo
         in
+            show(Map.lookup "x1" t2) ++"\n"++
+            show(Map.lookup "x2" t2) ++"\n"++
+            show(Map.lookup "x3" t2) ++"\n"++
+            "\n"++"\n"++
             (procLabel id) ++
             "    push_stack_frame 1\n" ++
             "#decl\n" ++
@@ -57,13 +61,13 @@ epilog :: Int -> String
 epilog n = "    pop_stack_frame " ++ (show n) ++ 
            "\n    return\n"
           
-paramsCode :: [Param] -> GenTable -> Int -> String
+paramsCode :: [Param] -> LocalState -> Int -> String
 paramsCode [] _ _
     = ""
 paramsCode (x:xs) t n
     = (paramCode x t n) ++ (paramsCode xs t (n + 1))
 
-paramCode :: Param -> GenTable -> Int -> String
+paramCode :: Param -> LocalState -> Int -> String
 paramCode _ _ n
     = "    store " ++ s ++ ", r" ++ s ++ "\n"
     where s = show n
@@ -76,16 +80,17 @@ procLabel :: String -> String
 procLabel s
     = "proc_" ++ s ++ ":\n"
 
-stmtsCode :: [Stmt] -> GenTable -> String
+stmtsCode :: [Stmt] -> LocalState -> String
 stmtsCode stmts gt = concatMap (stmtCode gt) stmts
 
-stmtCode :: GenTable -> Stmt -> String
+stmtCode :: LocalState -> Stmt -> String
 stmtCode gt (Write expr) = 
     let 
         (code, reg, ty) = exprCode expr 0
     in
         code ++ 
         "    call_builtin " ++ (writeBuiltin ty) ++ "\n"
+
 
 
 exprCode :: Expr -> Reg -> (String, Reg, BaseType)

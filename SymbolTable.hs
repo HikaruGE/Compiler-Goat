@@ -23,8 +23,8 @@ type VarTable
 -- (a, b) represents matrix, where a, b >= 1
 type SlotNum = Int
 data VarInfo
-    = VarInfo BaseType SlotNum Bool (Int, Int) Indic
-
+    = VarInfo BaseType SlotNum Bool (Int, Int) (Maybe Indic)
+        deriving(Show)
 -- look up a procedure name that is guaranteed to be present, from the global symbol table
 getVarTable :: Ident -> ProcTable -> VarTable
 getVarTable id table
@@ -52,17 +52,17 @@ getVarInfo id table
 -- sumSize (VarInfo _ _ True (a, b) _) n
 --   = n + a * b
 
-genSymTable :: Program -> SymTable
-genSymTable program =
+initSymTable :: Program -> SymTable
+initSymTable program =
     let
-        callTable = genCallTable program
-        -- procTable = genProcTable program
-        procTable = Map.empty
+        callTable = initCallTable program
+        procTable = initProcTable program
+        -- procTable = Map.empty
     in
         (callTable, procTable)
 
-genCallTable :: Program -> CallTable
-genCallTable (Program procs) =
+initCallTable :: Program -> CallTable
+initCallTable (Program procs) =
     let
         init = Map.empty 
     in
@@ -76,9 +76,67 @@ insertCallTable table proc =
     in
         Map.insert procid params table
 
+initProcTable :: Program -> ProcTable
+initProcTable (Program procs) =
+    let
+        init = Map.empty 
+    in
+        foldl insertProcTable init procs
+
+insertProcTable :: ProcTable -> Proc -> ProcTable
+insertProcTable table proc =
+    let
+        procid = getIdentFromProc proc
+        varTable = initVarTable proc
+    in
+        Map.insert procid varTable table
+
+initVarTable :: Proc -> VarTable
+initVarTable proc =
+    let
+        init = Map.empty
+        params = getParamsFromProc proc
+        decls = getDeclsFromProc proc
+        varIdVarInfosPairs = genVarInfos params decls 0
+    in
+        foldl insertVarTable init varIdVarInfosPairs
+
+insertVarTable :: VarTable -> (Ident, VarInfo) -> VarTable
+insertVarTable table (id, varInfo) =
+        Map.insert id varInfo table
+
+genVarInfos :: [Param] -> [Decl] -> Int -> [(Ident, VarInfo)]
+genVarInfos [] [] _ = []
+genVarInfos (p@(Param _ _ id):ps) decls n = 
+    (id, varInfo):genVarInfos ps decls (n+1)
+    where
+        varInfo = genVarInfoFromParam p n
+genVarInfos [] (d:ds) n =
+    case d of
+        DeclVar ty id           ->  (id, varInfo):genVarInfos [] ds (n+1)
+        DeclArray ty id a       ->  (id, varInfo):genVarInfos [] ds (n+a)
+        DeclMatrix ty id a b    ->  (id, varInfo):genVarInfos [] ds (n+a*b)
+    where
+        varInfo = getVarInfoFromDecl d n
+
+genVarInfoFromParam :: Param -> SlotNum -> VarInfo
+genVarInfoFromParam (Param indic baseType ident) slotNum =
+    VarInfo baseType slotNum False (0,0) (Just indic)
+
+getVarInfoFromDecl :: Decl -> SlotNum -> VarInfo
+getVarInfoFromDecl (DeclVar baseType ident) slotNum =
+    VarInfo baseType slotNum True (0,0) Nothing
+getVarInfoFromDecl (DeclArray baseType ident a) slotNum =
+    VarInfo baseType slotNum True (a,0) Nothing
+getVarInfoFromDecl (DeclMatrix baseType ident a b) slotNum =
+    VarInfo baseType slotNum True (a,b) Nothing
+
 getIdentFromProc :: Proc -> Ident
 getIdentFromProc (Proc id _ _ _) = id
 
 getParamsFromProc :: Proc -> [Param]
 getParamsFromProc (Proc _ params _ _) = params
+
+getDeclsFromProc :: Proc -> [Decl]
+getDeclsFromProc (Proc _ _ decls _) = decls
 
