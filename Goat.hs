@@ -3,7 +3,7 @@ module Main where
 import GoatAST
 import PrettyPrinter
 import CodeGen
--- import SymTable
+import SymbolTable
 import Data.Char
 import qualified Data.Map as Map
 import Text.Parsec
@@ -319,7 +319,13 @@ main
             input <- readFile filename
             let output = runParser pMain 0 "" input
             case output of
-              Right ast -> putStr (compile ast)
+              Right ast -> putStr (programCode ast (genSymTable ast))
+            --   Right ast -> do
+            --                     (callt, proct) <- genSymTable ast
+            --                     print(callt)
+            --                     print(proct)
+            --                     putStr(programCode ast (callt, proct))
+                            
               Left err -> do {putStr "Parse error at "; 
                               print err; 
                               exitWith (ExitFailure 2)}

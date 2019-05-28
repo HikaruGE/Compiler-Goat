@@ -20,8 +20,9 @@ compile ast
             programCode ast t
 
 programCode :: Program -> SymTable -> String
-programCode (Program m) t
-    = 
+programCode (Program m) t@(c,p)
+    =   show(Map.lookup "main" c) ++"\n"++
+    show(Map.lookup "omg" c) ++"\n"++
         "    call proc_main\n" ++
         "    halt\n" ++ 
         (procsCode m t)

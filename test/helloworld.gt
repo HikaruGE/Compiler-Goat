@@ -2,18 +2,22 @@ proc main()
 
 begin
 
-write "hello world\n";
-write true;write "\n";
-write false;write "\n";
-write 3.1415;write "\n";
-write 996;write "\n";
-write -(-(-1));write "\n";
+write ((1+2) > 3*4) < (true > false);write "\n";
 
-write 7*8+1-9/3;write "\n";
-write 1/2.0+3*4;write "\n";
-write 1+2+3*4;write "\n";
-write (1+2) > 3*4;write "\n";
-write (1+2) = 3*4;write "\n";
-write 1*2-3*4;write "\n";
-write true > false;write "\n";
+end
+
+proc omg(val bool x1, val float x2, ref int c)
+
+begin
+
+write ((1+2) > 3*4) < (true > false);write "\n";
+
+end
+
+proc main(val bool x1, val float x2)
+
+begin
+
+write ((1+2) > 3*4) < (true > false);write "\n";
+
 end
