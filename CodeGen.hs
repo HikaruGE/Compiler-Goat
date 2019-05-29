@@ -15,13 +15,6 @@ incLabel (ct, vt, id, l) = (ct, vt, id, (l+1))
 data BinOpClass 
     = Arithmetic | Comparision | Logic
 
-
--- compile :: Program -> String
--- compile ast 
---     = 
---         let t = (Map.empty, Map.empty) in
---             programCode ast t
-
 programCode :: Program -> SymTable -> String
 programCode (Program m) t@(c,p)
     =   show(Map.lookup "main" c) ++"\n"++
@@ -240,8 +233,8 @@ stmtCode (If expr stmts) state@(_,_,id,l) =
     let
         (code, _, _) = exprCode expr 0 state
         newState1@(_,_,_,l1) = incLabel state
-        (innerStmtsCode,newState2) = stmtsCode stmts newState1
-
+        newState2@(_,_,_,l2) = incLabel newState1
+        (innerStmtsCode,newState3) = stmtsCode stmts newState2
     in
         (code ++ 
         "    branch_on_true r0, " ++ id ++ "_label_" ++ (show l) ++ "\n" ++ 
@@ -249,15 +242,16 @@ stmtCode (If expr stmts) state@(_,_,id,l) =
         id ++ "_label_" ++ (show l) ++ ":\n" ++
             innerStmtsCode ++ 
         (blockLabel id (show l1)),
-            newState2
+            newState3
         )
 
 stmtCode (IfElse expr stmts1 stmts2) state@(_,_,id,l) =
     let
         (code, _, _) = exprCode expr 0 state
         newState@(_,_,_,l1) = incLabel state
-        (innerStmtsCode1,newState1) = stmtsCode stmts1 newState
-        (innerStmtsCode2,newState2) = stmtsCode stmts1 newState1
+        newState1@(_,_,_,l2) = incLabel newState
+        (innerStmtsCode1,newState2) = stmtsCode stmts1 newState1
+        (innerStmtsCode2,newState3) = stmtsCode stmts1 newState2
     in
         (code++
         "    branch_on_false r0, " ++ id ++ "_label_" ++ (show l) ++ "\n" ++ 
@@ -273,10 +267,10 @@ stmtCode (IfElse expr stmts1 stmts2) state@(_,_,id,l) =
 stmtCode (While expr stmts) state@(_,_,id,l) =
     let
         (code, _, _) = exprCode expr 0 state
-        (innerStmtsCode, newState1) = stmtsCode stmts state
-        newState2@(_,_,_,l1) = incLabel newState1
-        newState3@(_,_,_,l2) = incLabel newState2
-        
+        newState1@(_,_,_,l1) = incLabel state
+        newState2@(_,_,_,l2) = incLabel newState1
+        newState3@(_,_,_,l3) = incLabel newState2
+        (innerStmtsCode, newState4) = stmtsCode stmts newState3
     in
         ((blockLabel id (show l)) ++ 
             code ++
@@ -286,7 +280,7 @@ stmtCode (While expr stmts) state@(_,_,id,l) =
             innerStmtsCode ++
         "    branch_uncond " ++ id ++ "_label_" ++ show(l) ++ "\n" ++ 
         (blockLabel id (show l2)),
-        newState1
+        newState4
         )
 
 storeSingleVar :: Ident -> VarInfo -> Reg -> String

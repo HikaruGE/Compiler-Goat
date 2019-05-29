@@ -1,4 +1,6 @@
 proc main ()
+    int x;
+    int y;
     begin
         #if的嵌套
         if x = 1 then y := true;
