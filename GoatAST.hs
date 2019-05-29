@@ -1,3 +1,5 @@
+-- Team Lihai
+
 module GoatAST where
 
 -----------------------------------

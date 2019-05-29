@@ -1,3 +1,5 @@
+-- Team Lihai
+
 module PrettyPrinter where
 
 import GoatAST

@@ -1,14 +1,23 @@
 proc main()
 
-    int count;
-    bool count[1];
+    int count[5];
+    int x;
+    float y;
+    bool f;
 begin
+    read count[0];
+    x := 1;
+    call a(count[0]);
 
-    count := 0;
-       read x;
-       while x > 0 do
-        count := count + 1;
-        read x; 
-    od
+    if 1.5 && 3 then
+        write "asdasda\n";
+    fi
+
+end
+
+proc a(ref int x)
+begin
+    
+    x := 1;
 
 end

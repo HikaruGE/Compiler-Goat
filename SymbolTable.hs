@@ -1,3 +1,5 @@
+-- Team Lihai
+
 module SymbolTable where
 
 import qualified Data.Map as Map
@@ -7,12 +9,20 @@ import GoatAST
 type SymTable 
     = (CallTable, ProcTable)
 
+-- A table that maps a procedure to its parameter list
 type CallTable
     = Map.Map Ident [Param]
 
+getCallList :: Ident -> CallTable -> [Param]
+getCallList id table
+    = case (Map.lookup id table) of Just m -> m
+                                    Nothing -> error ("Error: Procedure \"" ++ id ++ "\" is not defined")
+
+-- A table that maps a procedure to its local table of parameter and variable information
 type ProcTable
     = Map.Map Ident VarTable
 
+-- A table that maps a formal parameter or local variable to its own information
 type VarTable
     = Map.Map Ident VarInfo
 
@@ -33,6 +43,8 @@ getDim :: VarInfo -> (Int, Int)
 getDim (VarInfo _ _ _ (a,b) _) = (a,b)
 getIndic :: VarInfo -> Indic
 getIndic (VarInfo _ _ _ _ indic) = indic
+getFpFlag :: VarInfo -> Bool
+getFpFlag (VarInfo _ _ f _ _) = f
 
 -- look up a procedure name that is guaranteed to be present, from the global symbol table
 getVarTable :: Ident -> ProcTable -> VarTable
@@ -99,7 +111,10 @@ insertProcTable table proc =
         procid = getIdentFromProc proc
         varTable = initVarTable proc
     in
-        Map.insert procid varTable table
+        if Map.member procid table then
+            error ("Error: Duplicated definiton of procedure \"" ++ procid ++ "\"\n")
+        else        
+            Map.insert procid varTable table
 
 initVarTable :: Proc -> VarTable
 initVarTable proc =
@@ -114,7 +129,7 @@ initVarTable proc =
 insertVarTable :: VarTable -> (Ident, VarInfo) -> VarTable
 insertVarTable table (id, varInfo) =
     if Map.member id table then
-        error ("Error: Variable \""++ id ++ "\" is defined twice.")
+        error ("Error: Duplicated definition of variable \"" ++ id ++ "\"\n")
     else
         Map.insert id varInfo table
 
@@ -146,12 +161,18 @@ genVarInfoFromParam (Param indic baseType ident) slotNum =
     VarInfo baseType slotNum False (0,0) indic
 
 getVarInfoFromDecl :: Decl -> SlotNum -> VarInfo
-getVarInfoFromDecl (DeclVar baseType ident) slotNum =
-    VarInfo baseType slotNum True (0,0) Loc
-getVarInfoFromDecl (DeclArray baseType ident a) slotNum =
-    VarInfo baseType slotNum True (a,0) Loc
-getVarInfoFromDecl (DeclMatrix baseType ident a b) slotNum =
-    VarInfo baseType slotNum True (a,b) Loc
+getVarInfoFromDecl (DeclVar baseType ident) slotNum
+    = VarInfo baseType slotNum True (0,0) Loc
+getVarInfoFromDecl (DeclArray baseType ident a) slotNum
+    = if a > 0 then
+        VarInfo baseType slotNum True (a,0) Loc
+      else
+        error "Error: Invalid array size"
+getVarInfoFromDecl (DeclMatrix baseType ident a b) slotNum
+    = if (a > 0) && (b > 0) then
+        VarInfo baseType slotNum True (a,b) Loc
+      else
+        error "Error: Invalid matrix size"
 
 getIdentFromProc :: Proc -> Ident
 getIdentFromProc (Proc id _ _ _) = id

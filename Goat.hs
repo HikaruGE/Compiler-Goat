@@ -1,3 +1,5 @@
+-- Team Lihai
+
 module Main where
 
 import GoatAST
