@@ -40,6 +40,7 @@ getVarTable id table
     = m
         where (Just m) = Map.lookup id table
 
+
 -- look up a variable name that is guaranteed to be present, from the local symbol table
 getVarInfo :: Ident -> VarTable -> VarInfo
 getVarInfo id table
@@ -112,11 +113,19 @@ initVarTable proc =
 
 insertVarTable :: VarTable -> (Ident, VarInfo) -> VarTable
 insertVarTable table (id, varInfo) =
+    if Map.member id table then
+        error ("Error: Variable \""++ id ++ "\" is defined twice.")
+    else
         Map.insert id varInfo table
 
 lookupVarTable :: Ident -> VarTable -> VarInfo
-lookupVarTable varid vt = v
-    where (Just v) = Map.lookup varid vt
+lookupVarTable varid vt = 
+    let
+        result = Map.lookup varid vt
+    in
+        case result of
+            Just v -> v
+            Nothing -> error ("Error: Variable \""++ varid ++ "\" is not defined.")
 
 genVarInfos :: [Param] -> [Decl] -> Int -> [(Ident, VarInfo)]
 genVarInfos [] [] _ = []

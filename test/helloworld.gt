@@ -1,8 +1,7 @@
 proc main()
 
-    int x;
     int count;
-
+    bool count[1];
 begin
 
     count := 0;
